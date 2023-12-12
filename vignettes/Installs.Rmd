@@ -21,7 +21,7 @@ Necessary R packages:
 
 install.packages("phyloregion")
 install.packages("ape")
-install.packages("phytools") 
+install.packages("phytools")
 install.packages("phangorn") 
 install.packages("tidyverse") 
 install.packages("devtools")
@@ -32,3 +32,106 @@ install.packages("rmarkdown")
 ```
 
 If you choose not to use RStudio, a text editor that can edit plain text and Markdown files is also necessary. BBEdit or TextEdit are fine. 
+
+Notes:
+
+Day1: 12/11
+- "ape" package
+- How to use "vignette" function
+> vignette(package="phangorn")
+> vignette("Trees",package="phangorn")
+
+- a phylogenetic tree
+```{r phylogenetic_tree, eval = FALSE, echo=TRUE}
+library(ape)
+library(phangorn)
+tree <- read.tree(text = "(, (, ));")
+plot(tree, no.margin = TRUE)
+nodelabels()
+tiplabels()
+# to understand how the trees are ordered --> ?reorder.phylo()
+str(tree)
+tree$edge
+
+random <- rtree(5) # generate a random phylogeny with a specified number of tips
+ladder_random <- ladderize(random) # reorder the tree to get a better visual
+plot(ladder_random, no.margin=TRUE)
+nodelabels()
+tiplabels()
+ladder_random$edge
+
+post_tree <- reorder(ladder_random, "postorder")
+plot(post_tree, no.margin=TRUE)
+nodelabels()
+tiplabels()
+ladder_random$edge
+
+
+getNumDes <- function(df_edge, num_mom){
+    num_daughters <- nrow(df_edge[df_edge$mom == num_mom,])
+    return(num_daughters)
+}
+
+getLiDes <- function(tree_obj){
+    df_edge <- as.data.frame(tree_obj$edge)
+    colnames(df_edge) <- c('mom', 'daughter')
+    li_mom <- unique(df_edge$mom)
+    
+    df_output <- as.data.frame(li_mom)
+    colnames(df_output) <- c('mom')
+    df_output$num_des <- 0
+    
+    for(i in li_mom){
+        df_output[df_output$mom == i, ]$num_des <- getNumDes(df_edge, i)
+    }
+    
+    return(df_output)
+}
+
+
+nr_desc <-  function(x){
+    x <- reorder(x, "postorder") # doesn't affect plotting but the edge matrix
+    node_count <- numeric(max(x$edge)) # initialize
+    node_count[1:Ntip(x)] = 1L # set the tips to have a descendant of 1
+    # why filling tips with 1 is really important
+    for(i in 1:nrow(x$edge)){
+        tmp = x$edge[i,1]
+        node_count[tmp] =  node_count[tmp] + node_count[x$edge[i,2]]
+    }
+    node_count
+}
+
+nr_desc(tree)
+df_tree_count <- getLiDes(tree) # this one does not count all but good try to myself!
+
+# solution shared by Jennie
+function1 <- function(x){
+    x <- x$edge
+    y <- x[~which(x[,2]==nrow(x)==1),] # to exclude the root
+    table(y[,1])
+}
+
+# solution by Dr. Dave
+treeParts <- prop.part(tree)
+#sapply simplifies output from lapply
+sapply(treeParts, length)
+nKids <- function(tree){
+    sapply(prop.part(tree), length)
+}
+nKids(tree) # spits out number of kids except for the tips
+
+```
+
+```{r multiphylo,eval = FALSE, echo=TRUE}
+trees <- rmtree(1000, 100) # random multi tree, 1000 trees each with 100 tips
+trees # 1000 phylogenetic trees
+trees[[1]]
+sapply(trees, Ntip)
+
+read.tree()
+
+write.tree(trees, "many_trees.tre")
+write.nexus(trees, "many_trees.nex")
+
+
+```
